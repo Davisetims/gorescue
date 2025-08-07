@@ -1,0 +1,308 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoRescue - Responder Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/responder_dashboard.css' %}">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="dashboard-header">
+            <div class="logo-section">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <h1>GoRescue Dashboard</h1>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot {% if responder.is_available %}available{% else %}unavailable{% endif %}"></div>
+                <span>{% if responder.is_available %}Available{% else %}Unavailable{% endif %}</span>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <!-- Responder Status Section -->
+            <section class="responder-status-section">
+                <div class="section-header">
+                    <i class="fas fa-user-shield"></i>
+                    <h2>Your Status</h2>
+                </div>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-card-header">
+                            <i class="fas fa-building"></i>
+                            <span>Organization</span>
+                        </div>
+                        <div class="status-card-value">{{ responder.organization }}</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-card-header">
+                            <i class="fas fa-clock"></i>
+                            <span>Last Update</span>
+                        </div>
+                        <div class="status-card-value">{{ responder.last_updated|timesince }} ago</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-card-header">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Coordinates</span>
+                        </div>
+                        <div class="status-card-value">{{ responder.latitude|floatformat:5 }}, {{
+                            responder.longitude|floatformat:5 }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Location Update Section -->
+            <section class="location-update-section">
+                <div class="section-header">
+                    <i class="fas fa-location-arrow"></i>
+                    <h2>Update Your Location</h2>
+                </div>
+                <form method="post" id="locationForm" class="location-form">
+                    {% csrf_token %}
+                    <div class="location-controls">
+                        <button type="button" id="getLocationBtn" class="location-btn">
+                            <i class="fas fa-crosshairs"></i>
+                            Get Current Location
+                        </button>
+                        <div id="locationStatus" class="location-status">
+                            Location not updated
+                        </div>
+                    </div>
+                    <input type="hidden" name="latitude" id="latitude" value="{{ responder.latitude }}">
+                    <input type="hidden" name="longitude" id="longitude" value="{{ responder.longitude }}">
+                    <button type="submit" id="updateLocationBtn" class="submit-btn" disabled>
+                        <i class="fas fa-save"></i>
+                        Update Location
+                    </button>
+                </form>
+            </section>
+
+            <!-- Assigned Alerts Section -->
+            <section class="assigned-alerts-section">
+                <div class="section-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h2>Assigned Alerts</h2>
+                    {% if assigned_alerts %}
+                    <span class="alert-count">{{ assigned_alerts|length }}</span>
+                    {% endif %}
+                </div>
+
+                {% if assigned_alerts %}
+                <div class="alerts-container">
+                    {% for alert in assigned_alerts %}
+                    <div class="alert-card">
+                        <div class="alert-header">
+                            <div class="alert-type">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ alert.emergency_type }}
+                            </div>
+                            <div class="alert-status status-{{ alert.status|lower }}">
+                                {{ alert.get_status_display }}
+                            </div>
+                        </div>
+
+                        <div class="alert-info">
+                            <div class="alert-time">
+                                <i class="fas fa-clock"></i>
+                                {{ alert.timestamp|timesince }} ago
+                            </div>
+                            <a href="{% url 'responder_alert_detail' alert.id %}" class="view-messages-btn">
+                                <i class="fas fa-eye"></i>
+                                View Details
+                            </a>
+                        </div>
+
+                        <div class="tracking-container">
+                            <div class="tracking-map">
+                                <div class="victim-marker" title="Emergency Location">
+                                    <i class="fas fa-exclamation"></i>
+                                </div>
+                                <div class="responder-marker" title="Your Location">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="path-line" style="
+                                            left: 30%; 
+                                            top: 60%; 
+                                            width: 40%; 
+                                            transform: rotate(-25deg);
+                                        "></div>
+                            </div>
+
+                            <div class="tracking-info">
+                                <div class="distance-info">
+                                    <i class="fas fa-route"></i>
+                                    <span>Distance:</span>
+                                    <span class="distance-value distance" data-alert-lat="{{ alert.latitude }}"
+                                        data-alert-lon="{{ alert.longitude }}"
+                                        data-responder-lat="{{ responder.latitude }}"
+                                        data-responder-lon="{{ responder.longitude }}">
+                                        Calculating...
+                                    </span>
+                                </div>
+                                <div class="eta-info">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>Location:</span>
+                                    <span class="eta-value">{{ alert.latitude|floatformat:3 }}, {{
+                                        alert.longitude|floatformat:3 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-alerts">
+                    <i class="fas fa-check-circle"></i>
+                    <p>No Currently Assigned Alerts</p>
+                    <small>You're all caught up! New alerts will appear here when assigned.</small>
+                </div>
+                {% endif %}
+            </section>
+
+            <!-- Recently Completed Alerts Section -->
+            <section class="completed-alerts-section">
+                <div class="section-header">
+                    <i class="fas fa-check-double"></i>
+                    <h2>Recently Completed Alerts</h2>
+                    {% if completed_alerts %}
+                    <span class="alert-count completed">{{ completed_alerts|length }}</span>
+                    {% endif %}
+                </div>
+
+                {% if completed_alerts %}
+                <div class="completed-alerts-list">
+                    {% for alert in completed_alerts %}
+                    <div class="completed-alert-item">
+                        <div class="completed-alert-info">
+                            <div class="completed-alert-type">
+                                <i class="fas fa-check-circle"></i>
+                                {{ alert.emergency_type }}
+                            </div>
+                            <div class="completed-alert-date">
+                                {{ alert.timestamp|date:"M d, Y H:i" }}
+                            </div>
+                        </div>
+                        <div class="completed-status">
+                            <span class="resolved-badge">Resolved</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-alerts">
+                    <i class="fas fa-history"></i>
+                    <p>No Completed Alerts Yet</p>
+                    <small>Completed alerts will be shown here for your reference.</small>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+
+        <!-- Footer Actions -->
+        <footer class="dashboard-footer">
+            <div class="footer-actions">
+                <a href="{% url 'logout' %}" class="footer-btn logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+                <a href="#" class="footer-btn" id="printReportBtn">
+                    <i class="fas fa-print"></i>
+                    Print Report
+                </a>
+                <a href="{% url 'edit_profile' %}" class="footer-btn">
+                    <i class="fas fa-cog"></i>
+                    Edit Profile
+                </a>
+            </div>
+        </footer>
+        
+        <!-- PDF Viewer Modal -->
+        <div id="pdfModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <iframe id="pdfViewer" style="width:100%; height:80vh; border:none;"></iframe>
+            </div>
+        </div>
+        
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+            }
+        
+            .modal-content {
+                background-color: #fefefe;
+                margin: 5% auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+                max-width: 900px;
+                border-radius: 8px;
+            }
+        
+            .close-modal {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+        
+            .close-modal:hover {
+                color: black;
+            }
+        </style>
+        
+        <script>
+            // PDF Report functionality
+            document.getElementById('printReportBtn').addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // // Show loading state
+                    // const originalContent = this.innerHTML;
+                    // this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+                    // Create a new window/tab for the PDF
+                    const pdfWindow = window.open("{% url 'responder_report' %}", '_blank');
+
+                    // Handle case where popup is blocked
+                    if (!pdfWindow) {
+                        alert('Please allow popups for this site to view the report');
+                        this.innerHTML = originalContent;
+                        return;
+                    }
+
+                    // Check if PDF loaded successfully
+                    const checkLoaded = setInterval(() => {
+                        try {
+                            if (pdfWindow.document.readyState === 'complete') {
+                                clearInterval(checkLoaded);
+                                this.innerHTML = originalContent;
+                            }
+                        } catch (e) {
+                            // Cross-origin check failed means PDF is loaded
+                            clearInterval(checkLoaded);
+                            this.innerHTML = originalContent;
+                        }
+                    }, 100);
+                });
+        </script>
+    </div>
+
+    <script src="{% static 'js/responder_dashboard.js' %}"></script>
+</body>
+
+</html>
