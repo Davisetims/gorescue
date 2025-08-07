@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'core'
 ]
 
+
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -55,6 +57,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://gorescue.up.railway.app',
+
+]
 ROOT_URLCONF = 'geo_rescue.urls'
 
 TEMPLATES = [
